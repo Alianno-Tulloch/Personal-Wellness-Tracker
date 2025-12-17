@@ -36,7 +36,7 @@ def main():
         "hours_slept": 7.5,
         "exercise_minutes": 45,
         "mood_scale": 8,
-        "mood_description": "happy",
+        "mood_tags": "happy",
         "activities": "jogging, reading, cooking",
         "notes": "Had a great day exploring new recipes and enjoying the sunshine. Felt energetic and positive throughout the day."
     }
