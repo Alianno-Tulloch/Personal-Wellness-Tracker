@@ -9,8 +9,6 @@ Writes data to a CSV file. Determines the format
 """
 def write_to_csv(file_path, data_entry, mode = 'a'):
     with open(file_path, mode = mode, newline = '') as file:
-
-
         writer = csv.DictWriter(file, fieldnames = data_entry.keys())
 
         
