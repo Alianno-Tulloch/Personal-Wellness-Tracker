@@ -4,6 +4,8 @@ file_path = 'data.csv'
 # Note: Remember to add the CSV to the gitignore in the future, once the data testing is further along
 
 
+# Make sure you add more specific writing and reading functions later on, this is just a basic version to get started
+
 """
 Writes data to a CSV file. Determines the format
 """

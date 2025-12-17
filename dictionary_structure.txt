@@ -19,8 +19,8 @@ def create_daily_entry(
     "exercise_minutes": exercise_minutes,  # integer representing minutes of exercise
     "mood_scale": mood_scale,        # integer from 1 to 10
     "mood_tags": mood_tags, # string describing mood (e.g., "happy", "stressed")
-    "activities": [],       # list of strings representing activities
-    "notes": ""             # string for additional notes
+    "activities": activities,       # list of strings representing activities
+    "notes": notes             # string for additional notes
 }
 
 # Test Entry
