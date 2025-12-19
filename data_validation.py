@@ -14,20 +14,59 @@ def create_daily_entry(
     mood_tags: str,
     activities: str,
     notes: str,
-) -> dict:
-    return {
-        "date": date,               # string in YYYY-MM-DD format
-        "hours_slept": hours_slept,     # hours slept in minutes
-        "exercise_minutes": exercise_minutes,  # hours exercised in minutes
-        "mood_scale": mood_scale,        # integer from 1 to 10
-        "mood_tags": mood_tags, # string describing mood (e.g., "happy", "stressed")
-        "activities": activities,       # list of strings representing activities
-        "notes": notes             # string for additional notes
+) -> tuple[dict, dict]:
+    """
+    Returns:
+        entry: dict (empty if errors exist)
+        errors: dict[field_name -> error_message]
+    """
+
+    errors = {}
+
+    # --- Date ---
+    if not validate_date(date):
+        errors["date"] = "Invalid date. Please use YYYY-MM-DD."
+
+    # --- Sleep ---
+    if not validate_hours_slept(hours_slept):
+        errors["hours_slept"] = "Sleep time must be between 0 and 1440 minutes."
+
+    # --- Exercise ---
+    if not validate_exercise_minutes(exercise_minutes):
+        errors["exercise_minutes"] = "Exercise time must be between 0 and 1440 minutes."
+
+    # --- Mood scale ---
+    if not validate_mood_scale(mood_scale):
+        errors["mood_scale"] = "Mood must be a number between 0 and 10."
+
+    # --- Mood tags ---
+    if not validate_mood_tags(mood_tags):
+        errors["mood_tags"] = "Please enter at least one mood tag."
+
+    # --- Activities ---
+    if not validate_activities(activities):
+        errors["activities"] = "Please enter at least one activity."
+
+    # --- If any errors exist, do NOT build entry ---
+    if errors:
+        return {}, errors
+
+    # --- Build clean entry only if valid ---
+    entry = {
+        "date": date,
+        "hours_slept": hours_slept,
+        "exercise_minutes": exercise_minutes,
+        "mood_scale": float(mood_scale),
+        "mood_tags": mood_tags.strip(),
+        "activities": activities.strip(),
+        "notes": notes.strip(),
     }
+
+    return entry, {}
 
 
 # Check that the date is valid, and is in a 'YYYY-MM-DD' format
-def validate_date(date_str):
+def validate_date(date_str: str) -> bool:
     """
     Note: day and year will just be textboxes that only accept numbers, month will be a combo box.
     The values will be passed to this function as a string in the format 'YYYY-MM-DD'.
@@ -40,31 +79,33 @@ def validate_date(date_str):
         return False
 
 # Check that the time slept is within the bounds of 24 hours
-def validate_hours_slept(hours_slept):
+def validate_hours_slept(hours_slept: int) -> bool:
     """
     Note - the textboxes will only accept number values enterred, and it won't register non-numeric input
     Note 2 - This function will also be used when editing, importing, and graphing data
     Note 3 - The user will enter the value in 'HH:MM' format, but it will be passed to this function as
         an integer representing total minutes
     """
+
     if hours_slept < 0 or hours_slept > 1440:
         return False
     return True
 
 # Check that the exercise minutes is within the bounds of 24 hours
-def validate_exercise_minutes(exercise_minutes):
+def validate_exercise_minutes(exercise_hours: int, exercise_minutes: int) -> bool:
     """
     Note - the textboxes will only accept number values enterred, and it won't register non-numeric input
     Note 2 - This function will also be used when editing, importing, and graphing data
     Note 3 - The user will enter the value in 'HH:MM' format, but it will be passed to this function as
         an integer representing total minutes
     """
+    exmin = exercise_hours * 60 + exercise_minutes
     if exercise_minutes < 0 or exercise_minutes > 1440:
         return False
     return True
 
 # Check that the mood scale is a float between 0 and 10.0
-def validate_mood_scale(mood_scale):
+def validate_mood_scale(mood_scale) -> bool:
     """
     Note - the textboxes will only accept number values enterred, and it won't register non-numeric input
     Note 2 - This function will also be used when editing, importing, and graphing data
@@ -81,7 +122,7 @@ def validate_mood_scale(mood_scale):
         return False
 
 
-def validate_mood_tags(mood_tags):
+def validate_mood_tags(mood_tags) -> bool:
     """
     Just a check to make sure that the user entered something, the user MUST enter something
     The entered descritpion will be parsed in ', ' separated values when saving to CSV, by the data IO functions
@@ -91,7 +132,7 @@ def validate_mood_tags(mood_tags):
     else:
         return False
 
-def validate_activities(activities):
+def validate_activities(activities) -> bool:
    """
     Just a check to make sure that the user entered something, the user MUST enter something
     The entered descritpion will be parsed in ', ' separated values when saving to CSV, by the data IO functions
