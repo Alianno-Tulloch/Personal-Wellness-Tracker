@@ -65,6 +65,7 @@ def create_daily_entry(
     return entry, {}
 
 
+
 # Check that the date is valid, and is in a 'YYYY-MM-DD' format
 def validate_date(date_str: str) -> bool:
     """
