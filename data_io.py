@@ -85,11 +85,15 @@ def upsert_entry(file_path: str, entry: dict[str, Any]) -> str:
     - If entry["date"] already exists: replace that row
     - Else: append new row
 
+    After updating, all rows are sorted by date (oldest -> newest)
+    before being written back to the CSV.
+
     Returns:
     - "updated" or "inserted"
     """
     ensure_csv_exists(file_path)
 
+    # Read existing rows (all values as strings)
     rows = read_entries(file_path)
 
     target_date = str(entry["date"])
@@ -97,15 +101,35 @@ def upsert_entry(file_path: str, entry: dict[str, Any]) -> str:
     updated_rows: list[dict[str, Any]] = []
 
     for row in rows:
-        # row values are strings (from csv), so compare using strings.
+        # Compare by date string; existing rows have string dates
         if row.get("date", "") == target_date:
+            # Replace the old row with the new entry
             updated_rows.append(entry)
             action = "updated"
         else:
             updated_rows.append(row)
 
+    # If no existing row matched, append as a new entry
     if action == "inserted":
         updated_rows.append(entry)
 
-    write_entries(file_path, updated_rows)
+    # Sort rows by date string (YYYY-MM-DD sorts chronologically)
+    updated_rows_sorted = sorted(
+        updated_rows,
+        key=lambda r: r.get("date", "")
+    )
+
+    # Write back to disk in sorted order
+    write_entries(file_path, updated_rows_sorted)
+
     return action
+
+def sort_csv_by_date(file_path: str) -> None:
+    """
+    Utility to resort the entire CSV by date.
+    Can be called manually if you import / edit data outside the app.
+    """
+    rows = read_entries(file_path)
+    rows_sorted = sorted(rows, key=lambda r: r.get("date", ""))
+    write_entries(file_path, rows_sorted)
+    
