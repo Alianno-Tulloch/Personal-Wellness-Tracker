@@ -1,4 +1,4 @@
-# Mental Health Analytics Dashboard
+# Personal Wellness Tracker
 
 
 (TLDR about what the project is and what it does, 2-3 sentences)
