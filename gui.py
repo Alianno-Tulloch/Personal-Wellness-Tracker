@@ -1,14 +1,18 @@
 import sys
-from data_validation import create_daily_entry
 
 from PySide6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout,
-    QLabel, QComboBox, QLineEdit, QPushButton, QFileDialog, QMessageBox, QMainWindow
+    QLabel, QComboBox, QLineEdit, QPushButton, QMainWindow
 )
 from PySide6.QtGui import QIntValidator, QDoubleValidator
-from PySide6.QtCore import Qt
 
-    
+from data_validation import create_daily_entry
+from data_io import upsert_entry
+
+
+# Where your CSV lives during development.
+# Packaging later can change this, but this is fine for now.
+CSV_PATH = "data/entries.csv"
 
 
 class InputEntryWindow(QMainWindow):
@@ -16,215 +20,269 @@ class InputEntryWindow(QMainWindow):
         super().__init__()
 
         self.setWindowTitle("Mental Health Tracker App")
-        self.resize(600, 600)
-        layout = QVBoxLayout()
+        self.resize(700, 650)
 
+        # Central widget is required for QMainWindow layouts.
         central_widget = QWidget()
         main_layout = QVBoxLayout(central_widget)
         self.setCentralWidget(central_widget)
 
-        """
-        Date Entry Section
-        """
-        main_layout.addWidget(QLabel("Enter the Date in the fields below:"))
+        # ---------------------------------------
+        # Global error panel (shows ALL errors)
+        # ---------------------------------------
+        self.error_panel = QLabel("")
+        self.error_panel.setWordWrap(True)
+
+        # Red text to make errors obvious.
+        self.error_panel.setStyleSheet("color: red;")
+        main_layout.addWidget(self.error_panel)
+
+        # Small status label (for "Saved" / "Updated" messages)
+        self.status_label = QLabel("")
+        main_layout.addWidget(self.status_label)
+
+        # ---------------------------------------
+        # Date section (3 inputs)
+        # ---------------------------------------
+        main_layout.addWidget(QLabel("Enter the date:"))
+
         date_layout = QHBoxLayout()
-        self.date_number_label = QLabel("Day Number")
-        self.date_number = QLineEdit()
-        self.date_month_label = QLabel("Month")
+
+        self.date_day = QLineEdit()
+        self.date_day.setPlaceholderText("Day")
+        self.date_day.setValidator(QIntValidator(1, 31, self))
+
         self.date_month = QComboBox()
         self.date_month.setEditable(True)
         self.date_month.addItems([
             "January", "February", "March", "April", "May", "June",
             "July", "August", "September", "October", "November", "December"
         ])
-        self.date_year_label = QLabel("Year")
+
         self.date_year = QLineEdit()
-        date_layout.addWidget(self.date_number_label)
-        date_layout.addWidget(self.date_number)
-        date_layout.addWidget(self.date_month_label)
+        self.date_year.setPlaceholderText("Year")
+        self.date_year.setValidator(QIntValidator(1900, 2100, self))
+
+        date_layout.addWidget(QLabel("Day"))
+        date_layout.addWidget(self.date_day)
+        date_layout.addWidget(QLabel("Month"))
         date_layout.addWidget(self.date_month)
-        date_layout.addWidget(self.date_year_label)
+        date_layout.addWidget(QLabel("Year"))
         date_layout.addWidget(self.date_year)
+
         main_layout.addLayout(date_layout)
 
+        # Error label specifically for date issues
+        self.date_error = QLabel("")
+        self.date_error.setStyleSheet("color: red;")
+        main_layout.addWidget(self.date_error)
 
-        """
-        Sleep Entry Section
-        """
-        # Sets the validator to only accept integers between 0 and 24
-        valid_sleep_hours = QIntValidator(0, 24)
-        valid_sleep_minutes = QIntValidator(0, 59)
+        # ---------------------------------------
+        # Sleep section (HH + MM, one blank allowed)
+        # ---------------------------------------
+        main_layout.addWidget(QLabel("Sleep time:"))
 
-        # Adds the sleep entry widgets to the layout
-        main_layout.addWidget(QLabel("Enter the amount of time you slept:"))
-
-        # Layout for sleep entry
         sleep_layout = QHBoxLayout()
 
-        # Hours and minutes input fields with labels
-        self.sleep_hours_label = QLabel("Hours")
         self.sleep_hours = QLineEdit()
-        self.sleep_hours.setValidator(valid_sleep_hours)
+        self.sleep_hours.setPlaceholderText("Hours")
+        self.sleep_hours.setValidator(QIntValidator(0, 24, self))
 
-        self.sleep_minutes_label = QLabel("Minutes")
         self.sleep_minutes = QLineEdit()
-        self.sleep_minutes.setValidator(valid_sleep_minutes)
+        self.sleep_minutes.setPlaceholderText("Minutes")
+        self.sleep_minutes.setValidator(QIntValidator(0, 59, self))
 
-        # Add widgets to the layout
-        sleep_layout.addWidget(self.sleep_hours_label)
+        sleep_layout.addWidget(QLabel("Hours"))
         sleep_layout.addWidget(self.sleep_hours)
-        sleep_layout.addWidget(self.sleep_minutes_label)
+        sleep_layout.addWidget(QLabel("Minutes"))
         sleep_layout.addWidget(self.sleep_minutes)
+
         main_layout.addLayout(sleep_layout)
 
+        self.sleep_error = QLabel("")
+        self.sleep_error.setStyleSheet("color: red;")
+        main_layout.addWidget(self.sleep_error)
 
-        """
-        Exercise Entry Section
-        """
-        # Sets the validator to only accept integers between 0 and 24
-        valid_exercise_hours = QIntValidator(0, 24)
-        valid_exercise_minutes = QIntValidator(0, 59)
+        # ---------------------------------------
+        # Exercise section (HH + MM, one blank allowed)
+        # ---------------------------------------
+        main_layout.addWidget(QLabel("Exercise time:"))
 
-        # Adds the exercise entry widgets to the layout
-        main_layout.addWidget(QLabel("Enter the amount of time you exercised today:"))
-        excersize_layout = QHBoxLayout()
+        exercise_layout = QHBoxLayout()
 
-        # Hours and minutes input fields with labels
-        self.exersize_hours_label = QLabel("Hours")
         self.exercise_hours = QLineEdit()
-        self.exercise_hours.setValidator(valid_exercise_hours)
+        self.exercise_hours.setPlaceholderText("Hours")
+        self.exercise_hours.setValidator(QIntValidator(0, 24, self))
 
-        self.exercise_minutes_label = QLabel("Minutes")
         self.exercise_minutes = QLineEdit()
-        self.exercise_minutes.setValidator(valid_exercise_minutes)
+        self.exercise_minutes.setPlaceholderText("Minutes")
+        self.exercise_minutes.setValidator(QIntValidator(0, 59, self))
 
-        # Add widgets to the layout
-        excersize_layout.addWidget(self.exersize_hours_label)
-        excersize_layout.addWidget(self.exercise_hours)
-        excersize_layout.addWidget(self.exercise_minutes_label)
-        excersize_layout.addWidget(self.exercise_minutes)
-        main_layout.addLayout(excersize_layout)
+        exercise_layout.addWidget(QLabel("Hours"))
+        exercise_layout.addWidget(self.exercise_hours)
+        exercise_layout.addWidget(QLabel("Minutes"))
+        exercise_layout.addWidget(self.exercise_minutes)
 
+        main_layout.addLayout(exercise_layout)
 
-        """
-        Mood Scale Entry Section
-        """
+        self.exercise_error = QLabel("")
+        self.exercise_error.setStyleSheet("color: red;")
+        main_layout.addWidget(self.exercise_error)
+
+        # ---------------------------------------
+        # Mood scale section (single input, float 0.0 - 10.0)
+        # ---------------------------------------
         main_layout.addWidget(QLabel("Mood scale (0.0 to 10.0):"))
-        valid_mood_scale = QDoubleValidator(0.0, 10.0, 1, self)
+
         self.mood_scale = QLineEdit()
-        self.mood_scale.setValidator(valid_mood_scale)
+        self.mood_scale.setPlaceholderText("Example: 7.5")
+        self.mood_scale.setValidator(QDoubleValidator(0.0, 10.0, 1, self))
         main_layout.addWidget(self.mood_scale)
 
+        self.mood_scale_error = QLabel("")
+        self.mood_scale_error.setStyleSheet("color: red;")
+        main_layout.addWidget(self.mood_scale_error)
 
-        """
-        Mood Tags Entry Section
-        """
+        # ---------------------------------------
+        # Mood tags (required)
+        # ---------------------------------------
+        main_layout.addWidget(QLabel("Mood tags (comma-separated, required):"))
 
+        self.mood_tags = QLineEdit()
+        self.mood_tags.setPlaceholderText("Example: stressed, productive")
+        main_layout.addWidget(self.mood_tags)
 
-        """
-        # Activities Entry Section
-        """
+        self.mood_tags_error = QLabel("")
+        self.mood_tags_error.setStyleSheet("color: red;")
+        main_layout.addWidget(self.mood_tags_error)
 
-        """
-        Notes Entry Section
-        """
+        # ---------------------------------------
+        # Activities (required)
+        # ---------------------------------------
+        main_layout.addWidget(QLabel("Activities (comma-separated, required):"))
 
-        """
-        # Submit Button Section
-        """
-        main_layout.addWidget(QLabel("Click the button below to submit your entry:"))
-        main_layout.addSpacing(10)
+        self.activities = QLineEdit()
+        self.activities.setPlaceholderText("Example: studying, gym, music")
+        main_layout.addWidget(self.activities)
+
+        self.activities_error = QLabel("")
+        self.activities_error.setStyleSheet("color: red;")
+        main_layout.addWidget(self.activities_error)
+
+        # ---------------------------------------
+        # Notes (optional)
+        # ---------------------------------------
+        main_layout.addWidget(QLabel("Notes (optional):"))
+
+        self.notes = QLineEdit()
+        self.notes.setPlaceholderText("Optional")
+        main_layout.addWidget(self.notes)
+
+        # No error label needed for notes (optional)
+
+        # ---------------------------------------
+        # Submit button
+        # ---------------------------------------
         self.submit_button = QPushButton("Submit Entry")
-        # Runs the submit_entry function when clicked
         self.submit_button.clicked.connect(self.submit_entry)
         main_layout.addWidget(self.submit_button)
 
-    
+    def clear_errors(self) -> None:
+        """
+        Reset all error labels.
+        """
+        self.error_panel.setText("")
+        self.status_label.setText("")
 
-    def submit_entry(self):
-        # --- Date: day + month + year -> YYYY-MM-DD ---
-        day_text = self.date_number.text().strip()
-        year_text = self.date_year.text().strip()
+        self.date_error.setText("")
+        self.sleep_error.setText("")
+        self.exercise_error.setText("")
+        self.mood_scale_error.setText("")
+        self.mood_tags_error.setText("")
+        self.activities_error.setText("")
 
-        # If the combo box is editable, currentText() captures typed text too
-        month_text = self.date_month.currentText().strip()
+    def show_errors(self, errors: dict[str, str]) -> None:
+        """
+        Display errors:
+        - global error panel: all errors at once
+        - section labels: show relevant message near the field
+        """
+        # Global panel
+        all_lines = []
+        for field, msg in errors.items():
+            all_lines.append(f"{field}: {msg}")
+        self.error_panel.setText("\n".join(all_lines))
 
-        # Convert month name to month number (1-12)
-        month_map = {
-            "january": 1, "february": 2, "march": 3, "april": 4,
-            "may": 5, "june": 6, "july": 7, "august": 8,
-            "september": 9, "october": 10, "november": 11, "december": 12
-        }
+        # Section mapping (field keys come from data_validation.py)
+        if "date" in errors or "date_day" in errors or "date_month" in errors or "date_year" in errors:
+            parts = []
+            for k in ["date_day", "date_month", "date_year", "date"]:
+                if k in errors:
+                    parts.append(errors[k])
+            self.date_error.setText(" ".join(parts))
 
-        try:
-            day = int(day_text)
-        except ValueError:
-            day = -1
+        if "sleep_time" in errors:
+            self.sleep_error.setText(errors["sleep_time"])
 
-        try:
-            year = int(year_text)
-        except ValueError:
-            year = -1
+        if "exercise_time" in errors:
+            self.exercise_error.setText(errors["exercise_time"])
 
-        month_num = month_map.get(month_text.lower(), -1)
+        if "mood_scale" in errors:
+            self.mood_scale_error.setText(errors["mood_scale"])
 
-        # Build a YYYY-MM-DD string if we can, otherwise pass something that will fail validation
-        if year > 0 and month_num > 0 and day > 0:
-            date_str = f"{year:04d}-{month_num:02d}-{day:02d}"
-        else:
-            date_str = "INVALID"
+        if "mood_tags" in errors:
+            self.mood_tags_error.setText(errors["mood_tags"])
 
-        # --- Exercise: HH + MM -> total minutes ---
-        ex_h = int(self.exercise_hours.text() or 0)
-        ex_m = int(self.exercise_minutes.text() or 0)
-        exercise_total_minutes = ex_h * 60 + ex_m
+        if "activities" in errors:
+            self.activities_error.setText(errors["activities"])
 
-        # --- Sleep: HH + MM -> total minutes ---
-        sleep_h = int(self.sleep_hours.text() or 0)
-        sleep_m = int(self.sleep_minutes.text() or 0)
-        sleep_total_minutes = sleep_h * 60 + sleep_m
+    def submit_entry(self) -> None:
+        """
+        Called when the submit button is clicked.
 
-        # --- Other fields (placeholders for now) ---
-        mood_scale_text = self.mood_scale.text().strip()
-
-        # You haven't created these widgets yet, so keep safe placeholders for now
-        mood_tags = ""      # later: self.mood_tags.text().strip()
-        activities = ""     # later: self.activities.text().strip()
-        notes = ""          # later: self.notes.text().strip()
+        Important design choice:
+        - GUI collects raw strings only.
+        - Parsing/validation happens in create_daily_entry.
+        - If valid, we upsert to CSV.
+        """
+        self.clear_errors()
 
         entry, errors = create_daily_entry(
-            date=date_str,
-            hours_slept=sleep_total_minutes,
-            exercise_minutes=exercise_total_minutes,
-            mood_scale=mood_scale_text,
-            mood_tags=mood_tags,
-            activities=activities,
-            notes=notes,
+            date_day_text=self.date_day.text(),
+            date_month_text=self.date_month.currentText(),
+            date_year_text=self.date_year.text(),
+            sleep_hours_text=self.sleep_hours.text(),
+            sleep_minutes_text=self.sleep_minutes.text(),
+            exercise_hours_text=self.exercise_hours.text(),
+            exercise_minutes_text=self.exercise_minutes.text(),
+            mood_scale_text=self.mood_scale.text(),
+            mood_tags_text=self.mood_tags.text(),
+            activities_text=self.activities.text(),
+            notes_text=self.notes.text(),
         )
 
         if errors:
-            QMessageBox.warning(
-                self,
-                "Fix these fields",
-                "\n".join(f"{field}: {msg}" for field, msg in errors.items())
-            )
+            self.show_errors(errors)
             return
 
-        QMessageBox.information(self, "Saved", f"Entry is valid:\n{entry}")
+        # Save to CSV (update or insert)
+        action = upsert_entry(CSV_PATH, entry)
+        self.status_label.setText(f"Saved: entry {action} for {entry['date']}")
+
+        # Clear fields after save.
+        # Keep date fields if you want rapid edits for the same day.
+        self.sleep_hours.clear()
+        self.sleep_minutes.clear()
+        self.exercise_hours.clear()
+        self.exercise_minutes.clear()
+        self.mood_scale.clear()
+        self.mood_tags.clear()
+        self.activities.clear()
+        self.notes.clear()
 
 
-
-
-app = QApplication([])
-
-window = InputEntryWindow()
-window.show()
-
-app.exec()
-
-
-"""
-For now, only start working on the "Entry input" and CSV parts of the GUI.
-The graphing/visualizing stuff will be added on later, don't worry about
-the code/implementation for that right now
-"""
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    window = InputEntryWindow()
+    window.show()
+    sys.exit(app.exec())
