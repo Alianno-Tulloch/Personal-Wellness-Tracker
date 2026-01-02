@@ -1,29 +1,27 @@
 """
-main_window_gui.py
+main_menu_gui.py
 
-This file contains the **Main Application Window**
-for the Mental Health Tracker.
+Main application window for the Personal Wellness Tracker.
 
-This is the "shell" or "frame" of the app.
-
-Responsibilities:
+Layout:
 ----------------------------------------------------
-- Displays a row of navigation buttons (like tabs)
-- Holds a QStackedWidget to switch between pages
-- Creates and owns each page:
-    • EntryPage
-    • EntriesListPage (placeholder for now)
-    • GraphsPage (placeholder for now)
-    • ImportExportPage (placeholder for now)
+[ Sidebar (left) ]  [  Main content area (pages)   ]
 
-This file SHOULD NOT care about:
-- how entries are saved
-- how validation works
-- the details inside each page
+Sidebar:
+    - "Menu" button (collapse / expand)
+    - Navigation buttons:
+        • Log Entry
+        • View Entries
+        • Graphs
+        • Import / Export
 
-Each page manages itself.
+Main content:
+    - QStackedWidget that shows one page at a time:
+        • EntryPage (real)
+        • EntriesListPage (placeholder)
+        • GraphsPage (placeholder)
+        • ImportExportPage (placeholder)
 """
-
 
 import sys
 
@@ -33,117 +31,125 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 
-# Import the Log Entry page
+# Import the Log Entry page (the QWidget we built earlier)
 from entry_page_gui import EntryPage
-
 
 
 class MainWindow(QMainWindow):
     """
-    The MainWindow is the "root" of the entire GUI application.
+    The MainWindow is the "shell" around all pages.
+
+    It knows:
+        - how to lay out the sidebar and content
+        - how to switch which page is visible
+
+    It does NOT know:
+        - how validation works
+        - how saving works
+        - what each page does internally
     """
 
     def __init__(self):
         super().__init__()
 
-        self.setWindowTitle("Mental Health Tracker - Main Menu")
-        self.resize(900, 700)
-
-
+        self.setWindowTitle("Personal Wellness Tracker")
+        self.resize(1000, 700)
 
         # ================================================================
-        # CENTRAL WIDGET + MASTER LAYOUT
+        # CENTRAL WIDGET + ROOT LAYOUT
+        # ================================================================
+        # QMainWindow needs a single central widget.
+        # That central widget gets a horizontal layout:
+        #
+        #   [ sidebar_widget ]  [ stacked_pages ]
         # ================================================================
         central_widget = QWidget()
-        main_layout = QVBoxLayout(central_widget)
-
-        # Attach layout to the central widget
+        root_layout = QHBoxLayout(central_widget)
         self.setCentralWidget(central_widget)
 
+        # We will keep a reference to the sidebar so we can hide/show it.
+        self.sidebar_widget = QWidget()
+        sidebar_layout = QVBoxLayout(self.sidebar_widget)
 
+        # Optional: give the sidebar a fixed-ish width so it feels like a panel
+        self.sidebar_widget.setFixedWidth(200)
+
+        # Add the sidebar to the left side of the root layout
+        root_layout.addWidget(self.sidebar_widget)
 
         # ================================================================
-        # TOP NAVIGATION BUTTONS (like a menu bar)
+        # SIDEBAR: MENU TOGGLE BUTTON
         # ================================================================
-        nav_layout = QHBoxLayout()
+        # "Menu" button at the top that can hide/show the sidebar.
+        # When hidden, only the content area remains.
+        # ================================================================
+        self.menu_toggle_button = QPushButton("Hide Menu")
+        self.menu_toggle_button.clicked.connect(self.toggle_sidebar)
+        sidebar_layout.addWidget(self.menu_toggle_button)
 
-        # Buttons for each page
+        # Small spacer label for separation
+        sidebar_layout.addWidget(QLabel("Navigation:"))
+
+        # ================================================================
+        # SIDEBAR: NAVIGATION BUTTONS
+        # ================================================================
         self.entry_button = QPushButton("Log Entry")
         self.view_entries_button = QPushButton("View Entries")
         self.graphs_button = QPushButton("Graphs")
         self.import_export_button = QPushButton("Import / Export")
 
-        # Add buttons to the row
-        nav_layout.addWidget(self.entry_button)
-        nav_layout.addWidget(self.view_entries_button)
-        nav_layout.addWidget(self.graphs_button)
-        nav_layout.addWidget(self.import_export_button)
+        # Add nav buttons to the sidebar (vertical)
+        sidebar_layout.addWidget(self.entry_button)
+        sidebar_layout.addWidget(self.view_entries_button)
+        sidebar_layout.addWidget(self.graphs_button)
+        sidebar_layout.addWidget(self.import_export_button)
 
-        # Add the nav bar to the main layout
-        main_layout.addLayout(nav_layout)
-
-
+        # Add a stretch at the bottom so buttons stay at the top
+        sidebar_layout.addStretch()
 
         # ================================================================
-        # STACKED WIDGET = PAGE CONTAINER
+        # MAIN CONTENT: STACKED WIDGET (PAGES)
         # ================================================================
-        # This is the core of navigation:
-        #
-        # QStackedWidget holds multiple pages
-        # but only shows ONE page at a time.
+        # This is the area on the right that changes when nav buttons are clicked.
         # ================================================================
         self.stack = QStackedWidget()
-        main_layout.addWidget(self.stack)
-
-
+        root_layout.addWidget(self.stack, stretch=1)  # stretch=1 so it takes remaining space
 
         # ================================================================
-        # CREATE AND ADD PAGES
+        # CREATE PAGES
         # ================================================================
-
-        # Real page
         self.entry_page = EntryPage()
 
-        # Temporary placeholder pages
+        # Placeholder pages for now (simple labels)
         self.entries_list_page = self._make_placeholder_page("Entries list page (COMING SOON)")
         self.graphs_page = self._make_placeholder_page("Graphs page (COMING SOON)")
         self.import_export_page = self._make_placeholder_page("Import / Export page (COMING SOON)")
 
-
-        # Order matters: these are the pages in the stack
+        # Add pages to the stack
         self.stack.addWidget(self.entry_page)          # index 0
         self.stack.addWidget(self.entries_list_page)   # index 1
         self.stack.addWidget(self.graphs_page)         # index 2
         self.stack.addWidget(self.import_export_page)  # index 3
 
-
-
         # ================================================================
-        # CONNECT BUTTONS TO PAGE SWITCHING
+        # CONNECT NAV BUTTONS TO PAGE SWITCHING
         # ================================================================
         self.entry_button.clicked.connect(self.show_entry_page)
         self.view_entries_button.clicked.connect(self.show_entries_list_page)
         self.graphs_button.clicked.connect(self.show_graphs_page)
         self.import_export_button.clicked.connect(self.show_import_export_page)
 
-
-
-        # ================================================================
-        # DEFAULT PAGE
-        # ================================================================
+        # Start on the Log Entry page
         self.show_entry_page()
 
-
-
     # ================================================================
-    # UTILITY: BUILD A PLACEHOLDER PAGE
+    # HELPER: PLACEHOLDER PAGE
     # ================================================================
     def _make_placeholder_page(self, text: str) -> QWidget:
         """
-        Creates a temporary simple page containing centered text.
+        Simple helper that creates a QWidget with a centered label.
 
-        This lets us see page switching working,
-        even before we've built the real UI for that page.
+        Used until proper pages (tables, graphs, etc) are implemented.
         """
         page = QWidget()
         layout = QVBoxLayout(page)
@@ -152,10 +158,7 @@ class MainWindow(QMainWindow):
         label.setAlignment(Qt.AlignCenter)
 
         layout.addWidget(label)
-
         return page
-
-
 
     # ================================================================
     # PAGE SWITCHING METHODS
@@ -172,6 +175,27 @@ class MainWindow(QMainWindow):
     def show_import_export_page(self) -> None:
         self.stack.setCurrentWidget(self.import_export_page)
 
+    # ================================================================
+    # SIDEBAR TOGGLE
+    # ================================================================
+    def toggle_sidebar(self) -> None:
+        """
+        Show / hide the sidebar widget.
+
+        When hidden:
+            - only the main content area is visible
+            - button text changes to "Show Menu"
+        """
+        is_visible = self.sidebar_widget.isVisible()
+
+        if is_visible:
+            # Hide the sidebar
+            self.sidebar_widget.hide()
+            self.menu_toggle_button.setText("Show Menu")
+        else:
+            # Show the sidebar
+            self.sidebar_widget.show()
+            self.menu_toggle_button.setText("Hide Menu")
 
 
 # ================================================================
