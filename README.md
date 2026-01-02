@@ -15,7 +15,9 @@ The next day, I spent the whole day learning French and felt amazing.
 
 Lying in bed that night I thought:
 
-    “I felt a lot better accomplishing the goals I set out for myself than I felt wasting an entire day playing video games. If only I had some way to empirically remind myself of that the next time I feel like doing nothing for a full day.”
+    “I felt a lot better accomplishing the goals I set out for myself than I felt wasting an entire day playing video games.
+    
+    If only I had some way to empirically remind myself of that the next time I feel like doing nothing for a full day.”
 
 So I started building a tool where I can:
 - Track how I sleep, move, and feel
